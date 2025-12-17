@@ -479,35 +479,52 @@
   }
 
   initMode();
+  // ===== JSONP helper (for GitHub Pages, no CORS needed) =====
+  function jsonpCall(params){
+    return new Promise((resolve, reject) => {
+      const cb = 'cb_' + Math.random().toString(36).slice(2);
+      const url = new URL(GAS_URL);
+      Object.entries(params || {}).forEach(([k,v]) => url.searchParams.set(k, String(v)));
+      url.searchParams.set('callback', cb);
 
-  // ===== GAS fetch helper =====
-  async function callGas(payload){
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(payload || {})
+      const s = document.createElement('script');
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('timeout'));
+      }, 15000);
+
+      function cleanup(){
+        clearTimeout(timer);
+        try { delete window[cb]; } catch(_){}
+        s.remove();
+      }
+
+      window[cb] = (data) => { cleanup(); resolve(data); };
+      s.onerror = () => { cleanup(); reject(new Error('script load error')); };
+      s.src = url.toString();
+      document.head.appendChild(s);
     });
-    // 即使回來不是 JSON，也別讓整個頁面爆掉
-    const text = await res.text();
-    try { return JSON.parse(text); } catch(e) {
-      console.warn('GAS response is not JSON:', text?.slice?.(0, 200));
-      return null;
-    }
   }
 
-  // 抽獎：後端 doPost(e) 建議支援 {code}（你目前就是這樣）
   async function draw(code){
-    return await callGas({ code });
+    return await jsonpCall({ action:'draw', code });
   }
 
-  // Catalog：需要後端支援 action:'catalog' 回傳 {ok:true, typeImages, typeLovelyImages}
   async function loadCatalog(){
     try {
-      const resp = await callGas({ action: 'catalog' });
+      const resp = await jsonpCall({ action:'catalog' });
       if (resp && (resp.ok === true) && (resp.typeImages || resp.typeLovelyImages)) {
         catalog = resp;
         return;
       }
+      if (resp && (resp.typeImages || resp.typeLovelyImages)) {
+        catalog = { ok:true, ...resp };
+      }
+    } catch (e) {
+      console.warn('loadCatalog failed', e);
+    }
+  }
+
       // 也允許後端直接回傳物件（不包 ok）
       if (resp && (resp.typeImages || resp.typeLovelyImages)) {
         catalog = { ok:true, ...resp };
