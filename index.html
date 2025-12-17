@@ -158,7 +158,7 @@
       border-radius: 18px;
       border: 1px solid var(--line);
       background: rgba(0,0,0,.22);
-      height: 560px;
+      height: min(520px, calc(100dvh - 280px));
     }
     .fadeTop,.fadeBot{
       position:absolute; left:0; right:0;
@@ -282,13 +282,13 @@
     /* Desktop 版稍微更大 */
     body.is-desktop .wrap{ padding: 18px 14px 30px; }
     body.is-desktop .panel{ padding: 16px; }
-    body.is-desktop .slotCase{ height: 660px; }
+    body.is-desktop .slotCase{ height: min(640px, calc(100dvh - 220px)); }
     body.is-desktop .thumb{ height: 320px; }
     body.is-desktop .title{ font-size: 20px; }
 
     /* 小手機高度調整 */
     @media (max-width: 380px){
-      body.is-mobile .slotCase{ height: 520px; }
+      body.is-mobile .slotCase{ height: min(480px, calc(100dvh - 300px)); }
       body.is-mobile .thumb{ height: 210px; }
     }
   </style>
@@ -310,7 +310,7 @@
     <div class="wrap">
       <div class="panel">
         <div class="inputRow">
-          <input id="code_m" class="codeInput" placeholder="輸入序號（測試：20151020）" />
+          <input id="code_m" class="codeInput" placeholder="輸入序號（測試序號為 TWICE 出道日）" />
           <button id="btn_m" class="btn" onclick="start('m')">轉蛋 ONCE I GOCHA</button>
         </div>
 
@@ -347,7 +347,7 @@
     <div class="wrap">
       <div class="panel">
         <div class="inputRow" style="max-width:560px;margin:0 auto;">
-          <input id="code_d" class="codeInput" placeholder="輸入序號（測試：20151020）" />
+          <input id="code_d" class="codeInput" placeholder="輸入序號（測試序號為 TWICE 出道日）" />
           <button id="btn_d" class="btn" onclick="start('d')">轉蛋 ONCE I GOCHA</button>
         </div>
 
@@ -433,19 +433,10 @@
   async function loadCatalog(){
     try{
       const resp = await jsonpCall({ action:'catalog' });
-      if (resp && resp.ok) {
-        catalog = resp;
-      }
+      if (resp && resp.ok) catalog = resp;
     }catch(e){
       console.warn('catalog failed', e);
-      // catalog 失敗也不擋抽獎：只會讓轉動時顯示 🫧
-    } finally {
-      catalogReady = true;
-      // 解鎖按鈕
-      try { el('btn_m').disabled = false; } catch(e){}
-      try { el('btn_d').disabled = false; } catch(e){}
-      try { setMsg('m',''); } catch(e){}
-      try { setMsg('d',''); } catch(e){}
+      // 不擋抽獎：只會讓轉動時顯示 🫧
     }
   }
 
@@ -495,7 +486,6 @@
 
   // ===== Catalog / 第二段鎖定 type =====
   let catalog = { typeImages:{}, typeLovelyImages:{} };
-  let catalogReady = false;
   let currentTypeForLovely = '';
 
   const el = (id)=>document.getElementById(id);
@@ -587,12 +577,7 @@
 
         if (src){
           const img = document.createElement('img');
-          let finalSrc = src;
-          if (mode === 'lovely' && src){
-            const sep = src.includes('?') ? '&' : '?';
-            finalSrc = `${src}${sep}cb=${encodeURIComponent(text)}_${Date.now()}`;
-          }
-          img.src = finalSrc;
+          img.src = src;
           img.loading = 'eager';
           img.onerror = () => { thumb.textContent = '🫧'; };
           thumb.appendChild(img);
@@ -634,15 +619,30 @@
     const targetCenter = (stopIndex * step) + (step / 2);
     const finalY = centerY - targetCenter;
 
+    // 🎰 15% 機率：快停下來時「往回一格」的拉霸感（視覺效果，不影響實際中獎）
+    const doRewind = Math.random() < 0.15;
+    const endY = doRewind ? (finalY + step) : finalY;
+
     t.style.transform = 'translateY(0px)';
 
     const anim = t.animate(
-      [{ transform:'translateY(0px)' }, { transform:`translateY(${finalY}px)` }],
+      [{ transform:'translateY(0px)' }, { transform:`translateY(${endY}px)` }],
       { duration: 12000, easing:'cubic-bezier(0.08, 0.82, 0.16, 1)', fill:'forwards' }
     );
 
     await anim.finished;
-    t.style.transform = `translateY(${finalY}px)`;
+    t.style.transform = `translateY(${endY}px)`;
+
+    if (doRewind){
+      // 迅速回彈一格（反向），最後仍停在正確目標
+      const bounce = t.animate(
+        [{ transform:`translateY(${endY}px)` }, { transform:`translateY(${finalY}px)` }],
+        { duration: 420, easing:'cubic-bezier(0.2, 0.9, 0.2, 1)', fill:'forwards' }
+      );
+      await bounce.finished;
+      t.style.transform = `translateY(${finalY}px)`;
+    }
+
     setMsg(suffix, '');
   }
 
@@ -670,13 +670,6 @@
 
     el('resultBox_'+suffix).style.display = 'none';
     setMsg(suffix, '');
-
-    // 防呆：第一次進頁面 catalog 還在載入時先不要抽
-    if (!catalogReady){
-      setMsg(suffix, '獎項載入中…請稍等 1 秒再按');
-      return;
-    }
-
     setBusy(suffix, true);
 
     try{
@@ -704,12 +697,6 @@
       setBusy(suffix, false);
     }
   }
-
-  // 進頁面先鎖按鈕，避免 catalog 還沒載完就開始抽（第一次最容易造成 LOVELYS 整條同圖）
-  try { el('btn_m').disabled = true; } catch(e){}
-  try { el('btn_d').disabled = true; } catch(e){}
-  try { setMsg('m','載入獎項中…'); } catch(e){}
-  try { setMsg('d','載入獎項中…'); } catch(e){}
 
   // init
   initMode();
