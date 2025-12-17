@@ -158,7 +158,7 @@
       border-radius: 18px;
       border: 1px solid var(--line);
       background: rgba(0,0,0,.22);
-      height: min(520px, calc(100dvh - 280px));
+      height: min(520px, 60dvh);
     }
     .fadeTop,.fadeBot{
       position:absolute; left:0; right:0;
@@ -282,13 +282,13 @@
     /* Desktop 版稍微更大 */
     body.is-desktop .wrap{ padding: 18px 14px 30px; }
     body.is-desktop .panel{ padding: 16px; }
-    body.is-desktop .slotCase{ height: min(640px, calc(100dvh - 220px)); }
+    body.is-desktop .slotCase{ height: 660px; }
     body.is-desktop .thumb{ height: 320px; }
     body.is-desktop .title{ font-size: 20px; }
 
     /* 小手機高度調整 */
     @media (max-width: 380px){
-      body.is-mobile .slotCase{ height: min(480px, calc(100dvh - 300px)); }
+      body.is-mobile .slotCase{ height: min(480px, 56dvh); }
       body.is-mobile .thumb{ height: 210px; }
     }
   </style>
@@ -433,10 +433,19 @@
   async function loadCatalog(){
     try{
       const resp = await jsonpCall({ action:'catalog' });
-      if (resp && resp.ok) catalog = resp;
+      if (resp && resp.ok) {
+        catalog = resp;
+      }
     }catch(e){
       console.warn('catalog failed', e);
-      // 不擋抽獎：只會讓轉動時顯示 🫧
+      // catalog 失敗也不擋抽獎：只會讓轉動時顯示 🫧
+    } finally {
+      catalogReady = true;
+      // 解鎖按鈕
+      try { el('btn_m').disabled = false; } catch(e){}
+      try { el('btn_d').disabled = false; } catch(e){}
+      try { setMsg('m',''); } catch(e){}
+      try { setMsg('d',''); } catch(e){}
     }
   }
 
@@ -486,6 +495,7 @@
 
   // ===== Catalog / 第二段鎖定 type =====
   let catalog = { typeImages:{}, typeLovelyImages:{} };
+  let catalogReady = false;
   let currentTypeForLovely = '';
 
   const el = (id)=>document.getElementById(id);
@@ -577,7 +587,12 @@
 
         if (src){
           const img = document.createElement('img');
-          img.src = src;
+          let finalSrc = src;
+          if (mode === 'lovely' && src){
+            const sep = src.includes('?') ? '&' : '?';
+            finalSrc = `${src}${sep}cb=${encodeURIComponent(text)}_${Date.now()}`;
+          }
+          img.src = finalSrc;
           img.loading = 'eager';
           img.onerror = () => { thumb.textContent = '🫧'; };
           thumb.appendChild(img);
@@ -598,6 +613,7 @@
     setStage(suffix, labelText);
     setMsg(suffix, '轉蛋中…');
 
+    // 第二段：先建立一輪 LOVELYS 圖片 cache，避免整條同圖
     if (mode === 'lovely'){
       buildLovelyCacheForType(currentTypeForLovely);
     }
@@ -614,53 +630,36 @@
 
     const rect = firstCard.getBoundingClientRect();
     const step = rect.height + 18;
+
     const box = t.parentElement.getBoundingClientRect();
     const centerY = box.height / 2;
     const targetCenter = (stopIndex * step) + (step / 2);
     const finalY = centerY - targetCenter;
 
-    // 🎰 15% 機率：快停下來時「往回一格」的拉霸感（視覺效果，不影響實際中獎）
-    const doRewind = Math.random() < 0.15;
-    const endY = doRewind ? (finalY + step) : finalY;
-
     t.style.transform = 'translateY(0px)';
 
+    // A 配置：第一段縮短、第二段保留比較有儀式感（方法一依序停）
+    // 第一段（種類）約 7.8s；第二段（LOVELYS）約 10.2s
+    const baseDuration = (mode === 'type') ? 7800 : 10200;
+
     const anim = t.animate(
-  [{ transform:'translateY(0px)' }, { transform:`translateY(${finalY}px)` }],
-  { duration: 12000, easing:'cubic-bezier(0.08, 0.82, 0.16, 1)', fill:'forwards' }
-);
+      [{ transform:'translateY(0px)' }, { transform:`translateY(${finalY}px)` }],
+      { duration: baseDuration, easing:'cubic-bezier(0.08, 0.82, 0.16, 1)', fill:'forwards' }
+    );
 
-await anim.finished;
+    await anim.finished;
+    t.style.transform = `translateY(${finalY}px)`;
 
-// 先固定在正確停點
-t.style.transform = `translateY(${finalY}px)`;
-
-// 🎰 15% 機率：快停下時「逆向回滾一格」+ Q 彈回正確停點
-if (Math.random() < 0.15) {
-  const backY = finalY - step; // 往回（上一格）：track 再往上移一格
-
-  const bounce = t.animate(
-    [
-      { transform: `translateY(${finalY}px)` },
-      { transform: `translateY(${backY}px)` },   // 回滾一格（上一選項）
-      { transform: `translateY(${finalY}px)` }   // 彈回正確停點
-    ],
-    {
-      duration: 520,
-      easing: 'cubic-bezier(.2, 1.35, .35, 1)', // Q 彈感
-      fill: 'forwards'
-    }
-  );
-
-  await bounce.finished;
-  t.style.transform = `translateY(${finalY}px)`;
-}
-
-    if (doRewind){
-      // 迅速回彈一格（反向），最後仍停在正確目標
+    // 🎰 15% 機率：快停下時「往回（上一個選項）回滾一格」+ Q 彈回正確停點
+    if (Math.random() < 0.15){
+      const backY = finalY - step; // 往回一格（上一個選項）
       const bounce = t.animate(
-        [{ transform:`translateY(${endY}px)` }, { transform:`translateY(${finalY}px)` }],
-        { duration: 420, easing:'cubic-bezier(0.2, 0.9, 0.2, 1)', fill:'forwards' }
+        [
+          { transform:`translateY(${finalY}px)` },
+          { transform:`translateY(${backY}px)` },
+          { transform:`translateY(${finalY}px)` }
+        ],
+        { duration: 620, easing:'cubic-bezier(.2, 1.35, .35, 1)', fill:'forwards' }
       );
       await bounce.finished;
       t.style.transform = `translateY(${finalY}px)`;
@@ -669,7 +668,8 @@ if (Math.random() < 0.15) {
     setMsg(suffix, '');
   }
 
-  function setResult(suffix, resp){
+
+function setResult(suffix, resp){
     el('resultText_'+suffix).textContent = `${resp.type} / ${resp.color}`;
     el('resultHint_'+suffix).textContent = resp.prize_key ? `獎項代號：${resp.prize_key}` : '';
 
@@ -693,6 +693,13 @@ if (Math.random() < 0.15) {
 
     el('resultBox_'+suffix).style.display = 'none';
     setMsg(suffix, '');
+
+    // 防呆：第一次進頁面 catalog 還在載入時先不要抽
+    if (!catalogReady){
+      setMsg(suffix, '獎項載入中…請稍等 1 秒再按');
+      return;
+    }
+
     setBusy(suffix, true);
 
     try{
@@ -720,6 +727,12 @@ if (Math.random() < 0.15) {
       setBusy(suffix, false);
     }
   }
+
+  // 進頁面先鎖按鈕，避免 catalog 還沒載完就開始抽（第一次最容易造成 LOVELYS 整條同圖）
+  try { el('btn_m').disabled = true; } catch(e){}
+  try { el('btn_d').disabled = true; } catch(e){}
+  try { setMsg('m','載入獎項中…'); } catch(e){}
+  try { setMsg('d','載入獎項中…'); } catch(e){}
 
   // init
   initMode();
