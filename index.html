@@ -433,10 +433,19 @@
   async function loadCatalog(){
     try{
       const resp = await jsonpCall({ action:'catalog' });
-      if (resp && resp.ok) catalog = resp;
+      if (resp && resp.ok) {
+        catalog = resp;
+      }
     }catch(e){
       console.warn('catalog failed', e);
-      // 不擋抽獎：只會讓轉動時顯示 🫧
+      // catalog 失敗也不擋抽獎：只會讓轉動時顯示 🫧
+    } finally {
+      catalogReady = true;
+      // 解鎖按鈕
+      try { el('btn_m').disabled = false; } catch(e){}
+      try { el('btn_d').disabled = false; } catch(e){}
+      try { setMsg('m',''); } catch(e){}
+      try { setMsg('d',''); } catch(e){}
     }
   }
 
@@ -486,6 +495,7 @@
 
   // ===== Catalog / 第二段鎖定 type =====
   let catalog = { typeImages:{}, typeLovelyImages:{} };
+  let catalogReady = false;
   let currentTypeForLovely = '';
 
   const el = (id)=>document.getElementById(id);
@@ -577,7 +587,12 @@
 
         if (src){
           const img = document.createElement('img');
-          img.src = src;
+          let finalSrc = src;
+          if (mode === 'lovely' && src){
+            const sep = src.includes('?') ? '&' : '?';
+            finalSrc = `${src}${sep}cb=${encodeURIComponent(text)}_${Date.now()}`;
+          }
+          img.src = finalSrc;
           img.loading = 'eager';
           img.onerror = () => { thumb.textContent = '🫧'; };
           thumb.appendChild(img);
@@ -655,6 +670,13 @@
 
     el('resultBox_'+suffix).style.display = 'none';
     setMsg(suffix, '');
+
+    // 防呆：第一次進頁面 catalog 還在載入時先不要抽
+    if (!catalogReady){
+      setMsg(suffix, '獎項載入中…請稍等 1 秒再按');
+      return;
+    }
+
     setBusy(suffix, true);
 
     try{
@@ -682,6 +704,12 @@
       setBusy(suffix, false);
     }
   }
+
+  // 進頁面先鎖按鈕，避免 catalog 還沒載完就開始抽（第一次最容易造成 LOVELYS 整條同圖）
+  try { el('btn_m').disabled = true; } catch(e){}
+  try { el('btn_d').disabled = true; } catch(e){}
+  try { setMsg('m','載入獎項中…'); } catch(e){}
+  try { setMsg('d','載入獎項中…'); } catch(e){}
 
   // init
   initMode();
