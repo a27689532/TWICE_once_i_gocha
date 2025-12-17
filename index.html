@@ -1,0 +1,669 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>TWICE💙ONCE I  GOCHA  線上應援轉蛋</title>
+
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#111826;
+      --panel2:#0b1220;
+      --border:#1e2a3e;
+      --border2:#22324a;
+      --text:#eaf0ff;
+      --muted:rgba(234,240,255,.78);
+      --muted2:rgba(234,240,255,.60);
+      --btn1:#2a66ff;
+      --btn2:#1e49d8;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius:16px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial;
+      background: radial-gradient(1200px 600px at 50% -10%, rgba(42,102,255,.20), transparent 55%),
+                  radial-gradient(900px 500px at 10% 30%, rgba(255,80,80,.10), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* =========================
+       ✅ 防白屏：先用 RWD 當保底
+       ========================= */
+    .app{ display:none; }
+    @media (max-width: 768px){ .app.mobile{ display:block; } }
+    @media (min-width: 769px){ .app.desktop{ display:block; } }
+
+    /* JS 手動切換覆蓋 RWD */
+    body.is-mobile .app{ display:none !important; }
+    body.is-desktop .app{ display:none !important; }
+    body.is-mobile .app.mobile{ display:block !important; }
+    body.is-desktop .app.desktop{ display:block !important; }
+
+    /* =========================
+       ✅ 手機 Fit：禁止橫向溢出/拖拉
+       ========================= */
+    html, body{
+      width:100%;
+      max-width:100%;
+      overflow-x:hidden;      /* 核心：禁止水平捲動 */
+    }
+    body{ touch-action: pan-y; }   /* 只允許上下滑動（仍可滑動） */
+    img, svg, video, canvas{ max-width:100%; height:auto; }
+
+    /* =========================
+       共用：頂部列
+       ========================= */
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 16px;
+    }
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .brand h1{
+      margin:0;
+      font-size:18px;
+      line-height:1.1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand .sub{
+      font-size:12px;
+      color:var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .modeBtn{
+      flex: 0 0 auto;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(234,240,255,.92);
+      font-weight: 900;
+      letter-spacing:.4px;
+      cursor:pointer;
+      user-select:none;
+      box-shadow: 0 10px 20px rgba(0,0,0,.18);
+      white-space: nowrap;
+    }
+    .modeBtn:active{ transform: translateY(1px); }
+
+    .panel{
+      background: rgba(17,24,38,.86);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .inputRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .codeInput{
+      flex:1;
+      min-width: 220px;
+      padding: 14px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(11,18,32,.90);
+      color:var(--text);
+      font-size: 15px;
+      letter-spacing:.8px;
+      text-transform: uppercase;
+      outline:none;
+    }
+    .codeInput::placeholder{ color: rgba(234,240,255,.55); }
+
+    .btn{
+      border:0;
+      cursor:pointer;
+      user-select:none;
+      font-weight: 900;
+      letter-spacing:.6px;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color:white;
+      background: linear-gradient(180deg, var(--btn1), var(--btn2));
+      box-shadow: 0 10px 20px rgba(42,102,255,.25);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .statusLine{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 14px 0;
+      color:var(--muted);
+      font-size: 13px;
+    }
+    .statusLine .stageLabel{ font-weight:900; color: rgba(234,240,255,.92); }
+    .statusLine .hint{
+      color: rgba(234,240,255,.55);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width: 58%;
+    }
+
+    /* 拉霸（直立） */
+    .slotWrap{ display:flex; justify-content:center; width:100%; max-width:100%; }
+    .slotCase{
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      border-radius: var(--radius);
+      border:1px solid var(--border2);
+      background: linear-gradient(180deg, rgba(15,22,38,1), rgba(11,18,32,1));
+      overflow:hidden;
+    }
+    .pointerLine{
+      position:absolute;
+      left: 0; right: 0;
+      top: 50%;
+      border-top: 2px solid rgba(255, 80, 80, .95);
+      transform: translateY(-1px);
+      box-shadow: 0 0 18px rgba(255,80,80,.35);
+      pointer-events:none;
+      z-index: 4;
+    }
+    .fadeTop, .fadeBot{
+      position:absolute; left:0; right:0;
+      height: 80px;
+      pointer-events:none;
+      z-index: 3;
+    }
+    .fadeTop{ top:0; background: linear-gradient(180deg, rgba(11,15,20,1), rgba(11,15,20,0)); }
+    .fadeBot{ bottom:0; background: linear-gradient(0deg, rgba(11,15,20,1), rgba(11,15,20,0)); }
+
+    .track{
+      position:absolute;
+      left:0; top:0;
+      width:100%;
+      will-change: transform;
+      display:flex;
+      flex-direction:column;
+      z-index:2;
+      transform: translateY(0px);
+    }
+
+    .card{
+      width: calc(100% - 24px);
+      max-width: calc(100% - 24px);
+      margin: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      padding: 12px;
+      display:grid;
+      gap: 10px;
+      user-select:none;
+    }
+    .thumb{
+      width: 100%;
+      height: 260px;
+      border-radius: 16px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 30px;
+    }
+    .thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      background: rgba(0,0,0,.15);
+      display:block;
+    }
+    .meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:10px;
+      min-width:0;
+    }
+    .title{
+      font-weight: 950;
+      font-size: 18px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+    .tag{
+      flex:0 0 auto;
+      font-weight: 950;
+      font-size: 12px;
+      letter-spacing:.6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      opacity: .92;
+    }
+
+    .result{
+      display:none;
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: var(--radius);
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(11,18,32,.92);
+    }
+    .resultTop{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .resultThumb{
+      width: 120px; height: 120px;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      display:flex; align-items:center; justify-content:center;
+      font-size: 26px;
+      flex: 0 0 auto;
+    }
+    .resultThumb img{ width:100%; height:100%; object-fit: contain; background: rgba(0,0,0,.15); display:block; }
+    .resultMeta strong{ font-size: 16px; }
+    .resultMeta .small{ margin-top:6px; font-size: 12px; color: rgba(234,240,255,.62); }
+
+    /* MOBILE：完全手機化 */
+    .mobile .container{
+      padding: 10px 12px 16px;
+      max-width: 520px;
+      margin: 0 auto;
+      width:100%;
+      overflow-x:hidden;
+    }
+    .mobile .panel{ padding: 14px; width:100%; max-width:100%; }
+    .mobile .codeInput{
+      width:100%;
+      min-width:0;
+      font-size:16px;
+      padding: 16px 14px;
+      border-radius: 16px;
+    }
+    .mobile .btn{
+      width:100%;
+      padding: 16px 16px;
+      border-radius: 16px;
+      font-size:16px;
+    }
+    .mobile .slotCase{ height: 540px; }
+
+    @media (max-width: 380px){
+      .mobile .slotCase{ height: 500px; }
+      .thumb{ height: 230px; }
+    }
+
+    /* DESKTOP：置中 */
+    .desktop .container{
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 14px 16px 18px;
+      width:100%;
+      overflow-x:hidden;
+    }
+    .desktop .panel{ padding: 16px; }
+    .desktop .slotCase{
+      max-width: 620px;
+      height: 660px;
+      margin: 0 auto;
+    }
+    .desktop .thumb{ height: 320px; }
+    .desktop .title{ font-size: 20px; }
+  </style>
+</head>
+
+<body>
+  <!-- MOBILE -->
+  <div class="app mobile">
+    <div class="topbar">
+      <div class="brand">
+        <h1>TWICE💙ONCE I  GOCHA</h1>
+        <div class="sub">線上應援轉蛋｜手機版</div>
+      </div>
+      <button class="modeBtn" onclick="toggleMode()">🔁 切換版面</button>
+    </div>
+
+    <div class="container">
+      <div class="panel">
+        <div class="inputRow">
+          <input id="code_m" class="codeInput" placeholder="輸入序號（測試：20151020）" />
+          <button id="btn_m" class="btn" onclick="start('m')">轉蛋 ONCE I GOCHA</button>
+        </div>
+
+        <div class="statusLine">
+          <div><span class="stageLabel" id="stage_m">準備中</span></div>
+          <div class="hint" id="msg_m"></div>
+        </div>
+
+        <div class="slotWrap" style="margin-top:12px;">
+          <div class="slotCase">
+            <div class="fadeTop"></div>
+            <div class="fadeBot"></div>
+            <div class="pointerLine"></div>
+            <div class="track" id="track_m"></div>
+          </div>
+        </div>
+
+        <div class="result" id="resultBox_m">
+          <div style="font-weight:900; margin-bottom:10px;">🎉 你抽到：</div>
+          <div class="resultTop">
+            <div class="resultThumb" id="resultThumb_m">🫧</div>
+            <div class="resultMeta">
+              <strong id="resultText_m"></strong>
+              <div class="small" id="resultHint_m"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESKTOP -->
+  <div class="app desktop">
+    <div class="topbar">
+      <div class="brand">
+        <h1>TWICE💙ONCE I  GOCHA</h1>
+        <div class="sub">線上應援轉蛋｜桌機版</div>
+      </div>
+      <button class="modeBtn" onclick="toggleMode()">🔁 切換版面</button>
+    </div>
+
+    <div class="container">
+      <div class="panel">
+        <div class="inputRow">
+          <input id="code_d" class="codeInput" placeholder="輸入序號（測試：20151020）" />
+          <button id="btn_d" class="btn" onclick="start('d')">轉蛋 ONCE I GOCHA</button>
+        </div>
+
+        <div class="statusLine">
+          <div><span class="stageLabel" id="stage_d">準備中</span></div>
+          <div class="hint" id="msg_d"></div>
+        </div>
+
+        <div class="slotWrap" style="margin-top:12px;">
+          <div class="slotCase">
+            <div class="fadeTop"></div>
+            <div class="fadeBot"></div>
+            <div class="pointerLine"></div>
+            <div class="track" id="track_d"></div>
+          </div>
+        </div>
+
+        <div class="result" id="resultBox_d">
+          <div style="font-weight:900; margin-bottom:10px;">🎉 你抽到：</div>
+          <div class="resultTop">
+            <div class="resultThumb" id="resultThumb_d">🫧</div>
+            <div class="resultMeta">
+              <strong id="resultText_d"></strong>
+              <div class="small" id="resultHint_d"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwK_VSXqE9oczBRqh07hvDGl9sEzJKbBvPz6KGt7Lvpzy_7ms7599rWxd1zPFYeJzOb/exec';
+  const TYPES = ["雨傘娃","三麗鷗聯名","龍蝦扣","一代軟糖","巧克力","餅乾","車車","模型包"];
+  const LOVELYS = ["Navely","Jeongvely","Movely","Savely","Jively","Mively","Davely","Chaengvely","Tzuvely"];
+  const FILLERS = ["✨","💙","🎲","🫧","⭐","🎁"];
+
+  // ===== 安全 storage（iOS 無痕不會炸）=====
+  const MODE_KEY = 'gocha_mode';
+  let memoryMode = 'auto';
+  function safeGetMode(){
+    try { return localStorage.getItem(MODE_KEY) || 'auto'; }
+    catch(e){ return memoryMode || 'auto'; }
+  }
+  function safeSetMode(v){
+    memoryMode = v;
+    try { localStorage.setItem(MODE_KEY, v); } catch(e){}
+  }
+
+  function applyMode(mode){
+    document.body.classList.remove('is-mobile','is-desktop');
+
+    if (mode === 'mobile') document.body.classList.add('is-mobile');
+    else if (mode === 'desktop') document.body.classList.add('is-desktop');
+    else {
+      const w = Math.min(window.innerWidth || 9999, document.documentElement.clientWidth || 9999);
+      document.body.classList.add(w <= 768 ? 'is-mobile' : 'is-desktop');
+    }
+  }
+
+  function initMode(){
+    applyMode(safeGetMode());
+    window.addEventListener('resize', () => {
+      if (safeGetMode() === 'auto') applyMode('auto');
+    }, { passive:true });
+    window.addEventListener('orientationchange', () => {
+      if (safeGetMode() === 'auto') applyMode('auto');
+    }, { passive:true });
+  }
+
+  function toggleMode(){
+    const isMobileNow = document.body.classList.contains('is-mobile');
+    const next = isMobileNow ? 'desktop' : 'mobile';
+    safeSetMode(next);
+    applyMode(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  initMode();
+
+  // ===== Catalog / 第二段鎖定 type =====
+  let catalog = { typeImages:{}, typeLovelyImages:{} };
+  let currentTypeForLovely = '';
+
+  google.script.run
+    .withSuccessHandler((resp)=>{ if(resp && resp.ok) catalog = resp; })
+    .getPrizeCatalog();
+
+  const el = (id)=>document.getElementById(id);
+  const pickRandom = (arr)=> (!arr || arr.length===0) ? '' : arr[Math.floor(Math.random()*arr.length)];
+  const shuffle = (arr)=>{
+    const a = arr.slice();
+    for (let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  };
+  const rotateToIndex = (arr, target, desiredIndex)=>{
+    const idx = arr.indexOf(target);
+    if (idx===-1) return arr;
+    const shift = (idx - desiredIndex + arr.length) % arr.length;
+    return arr.slice(shift).concat(arr.slice(0, shift));
+  };
+
+  function getRandomTypeImage(type){ return pickRandom(catalog.typeImages?.[type] || []); }
+  function getRandomLovelyImageForType(type, lovely){
+    return pickRandom(catalog.typeLovelyImages?.[type]?.[lovely] || []);
+  }
+
+  function buildUniqueSequence(items, target){
+    const fillerCount = 18, tailFillerCount = 10, desiredPosInCore = items.length - 2;
+    let core = shuffle(items);
+    core = rotateToIndex(core, target, desiredPosInCore);
+    const head = Array.from({length:fillerCount}, ()=>pickRandom(FILLERS));
+    const tail = Array.from({length:tailFillerCount}, ()=>pickRandom(FILLERS));
+    const seq = head.concat(core, tail);
+    const stopIndex = head.length + desiredPosInCore;
+    return { seq, stopIndex };
+  }
+
+  function setBusy(suffix, b){
+    el('btn_'+suffix).disabled = b;
+    el('code_'+suffix).disabled = b;
+  }
+  function setStage(suffix, t){ el('stage_'+suffix).textContent = t || ''; }
+  function setMsg(suffix, t){ el('msg_'+suffix).textContent = t || ''; }
+
+  function renderCardsVertical(seq, mode, suffix){
+    const t = el('track_'+suffix);
+    t.innerHTML = '';
+
+    for (const text of seq){
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = text;
+
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+
+      const isFiller = FILLERS.includes(text);
+
+      if (isFiller){
+        thumb.textContent = text;
+        tag.textContent = 'GOCHA';
+      } else {
+        let src = '';
+        if (mode === 'type'){
+          src = getRandomTypeImage(text);
+          tag.textContent = 'TYPE';
+        } else {
+          src = getRandomLovelyImageForType(currentTypeForLovely, text);
+          tag.textContent = 'LOVELY';
+        }
+
+        if (src){
+          const img = document.createElement('img');
+          img.src = src;
+          img.loading = 'eager';
+          img.onerror = () => { thumb.textContent = '🫧'; };
+          thumb.appendChild(img);
+        } else {
+          thumb.textContent = '🫧';
+        }
+      }
+
+      meta.appendChild(title);
+      meta.appendChild(tag);
+      card.appendChild(thumb);
+      card.appendChild(meta);
+      t.appendChild(card);
+    }
+  }
+
+  async function spinVertical(items, target, labelText, mode, suffix){
+    setStage(suffix, labelText);
+    setMsg(suffix, '轉蛋中…');
+
+    const { seq, stopIndex } = buildUniqueSequence(items, target);
+    renderCardsVertical(seq, mode, suffix);
+
+    const t = el('track_'+suffix);
+    const firstCard = t.querySelector('.card');
+    const rect = firstCard.getBoundingClientRect();
+    const step = rect.height + 20;
+
+    const box = t.parentElement.getBoundingClientRect();
+    const centerY = box.height / 2;
+
+    const targetCenter = (stopIndex * step) + (step / 2);
+    const finalY = centerY - targetCenter;
+
+    t.style.transform = 'translateY(0px)';
+
+    const anim = t.animate(
+      [{ transform:'translateY(0px)' }, { transform:`translateY(${finalY}px)` }],
+      { duration: 12000, easing:'cubic-bezier(0.08, 0.82, 0.16, 1)', fill:'forwards' }
+    );
+
+    await anim.finished;
+    t.style.transform = `translateY(${finalY}px)`;
+    setMsg(suffix, '');
+  }
+
+  function setResult(suffix, resp){
+    el('resultText_'+suffix).textContent = `${resp.type} / ${resp.color}`;
+    el('resultHint_'+suffix).textContent = `獎項代號：${resp.prize_key}`;
+
+    const box = el('resultThumb_'+suffix);
+    box.innerHTML = '';
+    if (resp.image_url){
+      const img = document.createElement('img');
+      img.src = resp.image_url;
+      img.loading = 'eager';
+      img.onerror = () => { box.textContent = '🫧'; };
+      box.appendChild(img);
+    } else {
+      box.textContent = '🫧';
+    }
+
+    el('resultBox_'+suffix).style.display = 'block';
+  }
+
+  function start(suffix){
+    const code = (el('code_'+suffix).value || '').trim().toUpperCase();
+
+    el('resultBox_'+suffix).style.display = 'none';
+    setMsg(suffix, '');
+    setBusy(suffix, true);
+
+    google.script.run
+      .withSuccessHandler(async (resp)=>{
+        if (!resp || !resp.ok){
+          setMsg(suffix, (resp && resp.message) ? resp.message : '發生未知錯誤');
+          setStage(suffix, '失敗');
+          setBusy(suffix, false);
+          return;
+        }
+
+        currentTypeForLovely = resp.type;
+
+        await spinVertical(TYPES, resp.type, '第一段：抽「種類」', 'type', suffix);
+        await spinVertical(LOVELYS, resp.color, '第二段：抽「LOVELYS」', 'lovely', suffix);
+
+        setStage(suffix, '開箱完成');
+        setResult(suffix, resp);
+        setBusy(suffix, false);
+      })
+      .withFailureHandler((err)=>{
+        setMsg(suffix, '連線失敗：' + (err && err.message ? err.message : err));
+        setStage(suffix, '失敗');
+        setBusy(suffix, false);
+      })
+      .drawWithCode(code);
+  }
+</script>
+</body>
+</html>
