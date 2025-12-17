@@ -291,7 +291,71 @@
       body.is-mobile .slotCase{ height: min(480px, 56dvh); }
       body.is-mobile .thumb{ height: 210px; }
     }
-  </style>
+  
+    /* ===== 3x3 Slot (第二階段 LOVELYS) ===== */
+    .slot3x3{
+      position:absolute;
+      inset:0;
+      display:none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 16px 14px;
+      z-index: 2;
+    }
+    .reelWin{
+      position:relative;
+      overflow:hidden;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+    }
+    .reelTrack{
+      position:absolute;
+      left:0; right:0; top:0;
+      will-change: transform;
+      transform: translateY(0px);
+    }
+    .slotCell{
+      height: var(--cell-h, 140px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .slotCell:last-child{ border-bottom:none; }
+    .slotCell img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(0,0,0,.12);
+      border-radius: 12px;
+    }
+    /* 手機 / 桌機 cell 高度 */
+    body.is-mobile{ --cell-h: 130px; }
+    body.is-desktop{ --cell-h: 160px; }
+
+    /* payline overlay (可選：這裡先做淡淡提示線) */
+    .payline{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      display:none;
+      z-index: 3;
+    }
+    .payline::before{
+      content:"";
+      position:absolute;
+      left:10px; right:10px;
+      top:50%;
+      height:2px;
+      background: rgba(126,168,255,.65);
+      box-shadow: 0 0 18px rgba(126,168,255,.45);
+      transform: translateY(-1px);
+    }
+
+</style>
 </head>
 
 <body>
@@ -325,6 +389,12 @@
             <div class="fadeBot"></div>
             <div class="pointerLine"></div>
             <div class="track" id="track_m"></div>
+            <div class="slot3x3" id="slot_m">
+              <div class="reelWin" id="reel_m_0"></div>
+              <div class="reelWin" id="reel_m_1"></div>
+              <div class="reelWin" id="reel_m_2"></div>
+              <div class="payline" id="payline_m"></div>
+            </div>
           </div>
         </div>
 
@@ -362,6 +432,12 @@
             <div class="fadeBot"></div>
             <div class="pointerLine"></div>
             <div class="track" id="track_d"></div>
+            <div class="slot3x3" id="slot_d">
+              <div class="reelWin" id="reel_d_0"></div>
+              <div class="reelWin" id="reel_d_1"></div>
+              <div class="reelWin" id="reel_d_2"></div>
+              <div class="payline" id="payline_d"></div>
+            </div>
           </div>
         </div>
 
@@ -702,6 +778,9 @@ function setResult(suffix, resp){
 
     setBusy(suffix, true);
 
+    // 確保第一段先顯示單條滾動（隱藏 3x3）
+    showSlotStage(suffix, false);
+
     try{
       const resp = await draw(code);
 
@@ -715,7 +794,7 @@ function setResult(suffix, resp){
       currentTypeForLovely = resp.type;
 
       await spinVertical(TYPES, resp.type, '第一段：抽「種類」', 'type', suffix);
-      await spinVertical(LOVELYS, resp.color, '第二段：抽「LOVELYS」', 'lovely', suffix);
+      await spinSlot3x3(resp, suffix);
 
       setStage(suffix, '開箱完成');
       setResult(suffix, resp);
